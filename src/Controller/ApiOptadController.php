@@ -1,39 +1,41 @@
 <?php
 
-declare(strict_types=1);
 
 namespace App\Controller;
 
+
 use App\Interfaces\ApiInterface;
-use App\Service\HeaderSerializeService as HeaderSerialize;
+use App\Repository\AppOptadRepository as OptadRepository;
+use App\Service\OptadSerializeService;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
-use App\Repository\AppHeaderRepository as HeaderRepository;
 use Symfony\Component\Routing\Annotation\Route;
 
-#[Route(path: '/api/header')]
-class ApiHeaderController extends AbstractController implements ApiInterface
+#[Route(path: '/api/optad')]
+class ApiOptadController extends AbstractController implements ApiInterface
 {
+
     /**
-     * @param HeaderRepository $headerRepository
-     * @param LoggerInterface  $logger
+     * @param OptadRepository $optadRepository
+     * @param LoggerInterface $logger
      */
     public function __construct(
-        private HeaderRepository $headerRepository,
+        private OptadRepository $optadRepository,
         private LoggerInterface $logger
     ) {
     }
 
+
     /**
      * @inheritDoc
      */
-    #[Route(path: '/get', name: 'header_get_all', methods: ['GET'])]
+    #[Route(path: '/get', name: 'optad_get_all', methods: ['GET'])]
     public function getAll(): JsonResponse
     {
-        $headers = $this->headerRepository->findAll();
+        $optads = $this->optadRepository->findAll();
 
-        if (!$headers) {
+        if (!$optads) {
             $this->logger->alert('Database is empty');
 
             return $this->json([
@@ -47,19 +49,19 @@ class ApiHeaderController extends AbstractController implements ApiInterface
 
         $response = [];
 
-        foreach ($headers as $header) {
-            $response[] = (new HeaderSerialize($header))->serialize();
+        foreach ($optads as $optad) {
+            $response[] = (new OptadSerializeService($optad))->serialize();
         }
 
         sort($response);
 
-        $this->logger->info('return all headers');
+        $this->logger->info('return all optads');
 
         return $this->json([
             'status' => 200,
-            'message' => 'return all headers',
+            'message' => 'return all optads',
             'data' => [
-                'headers' => $response,
+                'optads' => $response,
             ],
         ]);
     }
@@ -67,30 +69,30 @@ class ApiHeaderController extends AbstractController implements ApiInterface
     /**
      * @inheritDoc
      */
-    #[Route(path: '/get/{id}', name: 'header_get_one', methods: ['GET'])]
+    #[Route(path: '/get/{id}', name: 'optad_get_one', methods: ['GET'])]
     public function getOne(int $id): JsonResponse
     {
-        $header = $this->headerRepository->findOneById($id);
+        $optad = $this->optadRepository->findOneById($id);
 
-        if (!$header) {
-            $this->logger->alert('header does not exist');
+        if (!$optad) {
+            $this->logger->alert('optad does not exist');
 
             return $this->json([
                 'status' => 404,
-                'message' => 'header does not exist',
+                'message' => 'optad does not exist',
                 'data' => [],
             ],
                 404
             );
         }
 
-        $this->logger->info('return one header');
+        $this->logger->info('return one optad');
 
         return $this->json([
             'status' => 200,
-            'message' => 'return one header',
+            'message' => 'return one optad',
             'data' => [
-                'header' => (new HeaderSerialize($header))->serialize(),
+                'setting' => (new OptadSerializeService($optad))->serialize(),
             ],
         ]);
     }

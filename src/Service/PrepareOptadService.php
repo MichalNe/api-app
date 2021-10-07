@@ -1,17 +1,20 @@
 <?php
 
-declare(strict_types=1);
 
 namespace App\Service;
 
+
 use App\Interfaces\PrepareInterface;
+use App\Repository\AppSettingRepository as SettingRepository;
 use Doctrine\DBAL\ConnectionException;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
+use Exception;
 use App\Entity\AppSetting as Setting;
-use App\Repository\AppSettingRepository as SettingRepository;
+use App\Entity\AppOptad as Optad;
+use DateTime;
 
-class PrepareSettingService implements PrepareInterface
+class PrepareOptadService implements PrepareInterface
 {
     /**
      * @param EntityManagerInterface $em
@@ -27,22 +30,16 @@ class PrepareSettingService implements PrepareInterface
     ) {
     }
 
-    /**
-     * @inheritDoc
-     */
-    public function setData(array $data): self
+    public function setData(array $data): PrepareInterface
     {
         $this->data = $data;
 
         return $this;
     }
 
-    /**
-     * @inheritDoc
-     */
     public function saveDataIntoDatabase(): ?bool
     {
-        if (!$this->data || !$this->data['currency']) {
+        if (!$this->data) {
             $this->logger->error('something wrong with input data');
 
             return null;
@@ -51,23 +48,33 @@ class PrepareSettingService implements PrepareInterface
         $this->em->getConnection()->beginTransaction();
 
         try {
-            /** @var Setting $setting */
-            $setting = $this->sr->findOneByCurrency($this->data['currency']);
-
-            if (!$setting) {
-                $setting = new Setting();
-                $setting->setCurrency($this->data['currency']);
-                $setting->setGroupBy($this->data['groupby'] ?? null);
-                $setting->setPeriodLength($this->data['PeriodLength'] ?? null);
-            } else {
-                $setting->setPeriodLength($this->data['PeriodLength'] ?? $setting->getPeriodLength());
-                $setting->setGroupBy($this->data['groupby'] ?? $setting->getGroupBy());
-            }
+            $setting = new Setting();
+            $setting
+                ->setCurrency($this->data['settings']['currency'])
+                ->setPeriodLength($this->data['settings']['PeriodLength'])
+                ->setGroupBy($this->data['settings']['groupby']);
 
             $this->em->persist($setting);
+
+            foreach ($this->data['data'] as $key => $value) {
+                $optad = new Optad();
+                $optad
+                    ->setSetting($setting)
+                    ->setUrls($value[0])
+                    ->setTags($value[1])
+                    ->setDate(new DateTime($value[2]))
+                    ->setEstimatedRevenue($value[3])
+                    ->setAdImpression($value[4])
+                    ->setAdEcpm($value[5])
+                    ->setClicks($value[6])
+                    ->setAdCtr($value[7]);
+
+                $this->em->persist($optad);
+            }
+
             $this->em->flush();
             $this->em->getConnection()->commit();
-        } catch (ConnectionException $e) {
+        } catch (Exception | ConnectionException $e) {
             $this->logger->error($e->getMessage());
 
             $this->em->getConnection()->rollBack();
@@ -78,7 +85,7 @@ class PrepareSettingService implements PrepareInterface
 
         $this->em->getConnection()->close();
 
-        $this->logger->info('saved settings');
+        $this->logger->info('saved all optad data with setting');
 
         return true;
     }
