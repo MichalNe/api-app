@@ -1,4 +1,4 @@
-# Recruitment task - documentation app
+# Documentation app
 
 The following documentation describes in more detail the requirements and capabilities of the application
 
